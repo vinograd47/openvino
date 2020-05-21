@@ -52,15 +52,6 @@ void readInputFilesArguments(std::vector<std::string> &files, const std::string&
     } else {
         files.push_back(arg);
     }
-
-    if (files.size() < 20) {
-        slog::info << "Files were added: " << files.size() << slog::endl;
-        for (std::string filePath : files) {
-            slog::info << "    " << filePath << slog::endl;
-        }
-    } else {
-        slog::info << "Files were added: " << files.size() << ". Too many to display each of them." << slog::endl;
-    }
 }
 
 /**
@@ -83,5 +74,14 @@ void parseInputFilesArguments(std::vector<std::string> &files) {
             break;
         }
         readInputFilesArguments(files, args.at(i));
+    }
+
+    if (files.size() < 20) {
+        slog::info << "Files were added: " << files.size() << slog::endl;
+        for (std::string filePath : files) {
+            slog::info << "    " << filePath << slog::endl;
+        }
+    } else {
+        slog::info << "Files were added: " << files.size() << ". Too many to display each of them." << slog::endl;
     }
 }
