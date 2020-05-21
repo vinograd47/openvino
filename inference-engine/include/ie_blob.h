@@ -29,6 +29,7 @@
 #include "ie_precision.hpp"
 
 namespace InferenceEngine {
+
 /**
  * @brief This class represents a universal container in the Inference Engine
  *
@@ -437,8 +438,6 @@ public:
      */
     virtual LockedMemory<void> wmap()noexcept = 0;
 
-
-
 protected:
     /**
      * @brief Gets the allocator for allocator-based blobs.
@@ -594,10 +593,18 @@ public:
      * @brief Allocates or reallocates memory
      */
     void allocate() noexcept override {
-        if (_handle != nullptr) {
-            getAllocator()->free(_handle);
+        const auto allocator = getAllocator();
+        const auto rawHandle = allocator->alloc(size() * sizeof(T));
+
+        if (rawHandle == nullptr) {
+            return;
         }
-        _handle = getAllocator()->alloc(size() * sizeof(T));
+
+        _handle.reset(
+            rawHandle,
+            [allocator](void* rawHandle) {
+                allocator->free(rawHandle);
+            });
     }
 
     /**
@@ -689,7 +696,7 @@ protected:
     /**
      * @brief A handle for the stored memory returned from _allocator.alloc().
      */
-    void* _handle = nullptr;
+    std::shared_ptr<void> _handle;
 
     /**
      * @brief Copies dimensions and data from the TBlob object.
@@ -720,8 +727,8 @@ protected:
      * @brief Frees handler and cleans up the stored data.
      */
     virtual bool free() {
-        bool bCanRelease = getAllocator()->free(_handle);
-        _handle = nullptr;
+        bool bCanRelease = _handle != nullptr;
+        _handle.reset();
         return bCanRelease;
     }
 
@@ -733,7 +740,7 @@ protected:
      */
     template <class S>
     LockedMemory<S> lockme() const {
-        return LockedMemory<S>(_allocator.get(), _handle, 0);
+        return LockedMemory<S>(_allocator.get(), getHandle(), 0);
     }
 
     /**
@@ -754,7 +761,7 @@ protected:
      * @brief Returns handle to the stored data.
      */
     void* getHandle() const noexcept override {
-        return _handle;
+        return _handle.get();
     }
 };
 
