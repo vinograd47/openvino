@@ -15,7 +15,9 @@
 #include <vector>
 
 namespace InferenceEngine {
+
 namespace {
+
 void verifyNV12BlobInput(const Blob::Ptr& y, const Blob::Ptr& uv) {
     // Y and UV must be valid pointers
     if (y == nullptr || uv == nullptr) {
@@ -189,6 +191,7 @@ void verifyI420BlobInput(const Blob::Ptr& y, const Blob::Ptr& u, const Blob::Ptr
                            << yDims[3] << "(Y plane) and " << vDims[3] << "(V plane)";
     }
 }
+
 }  // anonymous namespace
 
 CompoundBlob::CompoundBlob(): Blob(TensorDesc(Precision::UNSPECIFIED, {}, Layout::ANY)) {}
@@ -272,6 +275,17 @@ Blob::Ptr CompoundBlob::getBlob(size_t i) const noexcept {
     return _blobs[i];
 }
 
+Blob::Ptr CompoundBlob::createROI(const TensorSlice& roi) const {
+    std::vector<Blob::Ptr> roiBlobs;
+    roiBlobs.reserve(_blobs.size());
+
+    for (const auto& blob : _blobs) {
+        roiBlobs.push_back(blob->createROI(roi));
+    }
+
+    return std::make_shared<CompoundBlob>(std::move(roiBlobs));
+}
+
 const std::shared_ptr<IAllocator>& CompoundBlob::getAllocator() const noexcept {
     static std::shared_ptr<IAllocator> _allocator = nullptr;
     return _allocator;
@@ -317,6 +331,38 @@ Blob::Ptr& NV12Blob::uv() noexcept {
 const Blob::Ptr& NV12Blob::uv() const noexcept {
     // NOTE: UV plane is a memory blob, which is checked in the constructor
     return _blobs[1];
+}
+
+Blob::Ptr NV12Blob::createROI(const TensorSlice& roi) const {
+    if (roi.size() != 4) {
+        THROW_IE_EXCEPTION
+            << "Unsupported ROI num dims " << roi.size();
+    }
+
+    const auto& yROI = roi;
+
+    if (yROI[1].startInd != 0 || yROI[1].size != 1) {
+        THROW_IE_EXCEPTION
+            << "Wrong ROI slice for NV12 channels";
+    }
+
+    TensorSlice uvROI(4);
+
+    uvROI[0] = yROI[0];
+
+    uvROI[1].startInd = 0;
+    uvROI[1].size = 2;
+
+    uvROI[2].startInd = yROI[2].startInd / 2;
+    uvROI[2].size = yROI[2].size / 2;
+
+    uvROI[3].startInd = yROI[3].startInd / 2;
+    uvROI[3].size = yROI[3].size / 2;
+
+    const auto yRoiBlob = y()->createROI(yROI);
+    const auto uvRoiBlob = uv()->createROI(uvROI);
+
+    return std::make_shared<NV12Blob>(yRoiBlob, uvRoiBlob);
 }
 
 I420Blob::I420Blob(const Blob::Ptr& y, const Blob::Ptr& u, const Blob::Ptr& v) {
@@ -369,6 +415,39 @@ Blob::Ptr& I420Blob::v() noexcept {
 const Blob::Ptr& I420Blob::v() const noexcept {
     // NOTE: V plane is a memory blob, which is checked in the constructor
     return _blobs[2];
+}
+
+Blob::Ptr I420Blob::createROI(const TensorSlice& roi) const {
+    if (roi.size() != 4) {
+        THROW_IE_EXCEPTION
+        << "Unsupported ROI num dims " << roi.size();
+    }
+
+    const auto& yROI = roi;
+
+    if (yROI[1].startInd != 0 || yROI[1].size != 1) {
+        THROW_IE_EXCEPTION
+            << "Wrong ROI slice for NV12 channels";
+    }
+
+    TensorSlice uvROI(4);
+
+    uvROI[0] = yROI[0];
+
+    uvROI[1].startInd = 0;
+    uvROI[1].size = 1;
+
+    uvROI[2].startInd = yROI[2].startInd / 2;
+    uvROI[2].size = yROI[2].size / 2;
+
+    uvROI[3].startInd = yROI[3].startInd / 2;
+    uvROI[3].size = yROI[3].size / 2;
+
+    const auto yRoiBlob = y()->createROI(yROI);
+    const auto uRoiBlob = u()->createROI(uvROI);
+    const auto vRoiBlob = v()->createROI(uvROI);
+
+    return std::make_shared<I420Blob>(yRoiBlob, uRoiBlob, vRoiBlob);
 }
 
 }  // namespace InferenceEngine

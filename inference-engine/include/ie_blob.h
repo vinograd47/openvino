@@ -200,6 +200,31 @@ public:
      */
     virtual LockedMemory<const void> cbuffer() const noexcept = 0;
 
+    /**
+     * @brief Creates a blob describing given ROI object based on the current blob with memory sharing.
+     *
+     * Note: default implementation throws "not implemented" exception.
+     *
+     * @param roi A ROI object inside of the current blob.
+     *
+     * @return A shared pointer to the newly created ROI blob.
+     */
+    virtual Blob::Ptr createROI(const TensorSlice& roi) const {
+        (void) roi;
+        THROW_IE_EXCEPTION << "[NOT_IMPLEMENTED] createROI is not implemented for current type of Blob";
+    }
+
+    /**
+     * @brief Creates a blob describing given ROI object based on the current blob with memory sharing.
+     *
+     * @param roi A ROI object inside of the current blob.
+     *
+     * @return A shared pointer to the newly created ROI blob.
+     */
+    Blob::Ptr createROI(const ROI& roi) const {
+        return createROI(make_roi_slice(getTensorDesc(), roi));
+    }
+
 protected:
     /**
      * @brief The tensor descriptor of the given blob.
@@ -643,6 +668,10 @@ public:
         return std::move(lockme<void>());
     }
 
+    Blob::Ptr createROI(const TensorSlice& roi) const override {
+        return Blob::Ptr(new TBlob<T>(*this, roi));
+    }
+
     /**
      * @brief Gets BlobIterator for the data.
      *
@@ -762,6 +791,15 @@ protected:
      */
     void* getHandle() const noexcept override {
         return _handle.get();
+    }
+
+    TBlob(const TBlob& origBlob, const TensorSlice& roi) :
+            MemoryBlob(make_roi_desc(origBlob.getTensorDesc(), roi)),
+            _allocator(origBlob._allocator) {
+        IE_ASSERT(origBlob._handle != nullptr)
+            << "Original Blob must be allocated before ROI creation";
+
+        _handle = origBlob._handle;
     }
 };
 
