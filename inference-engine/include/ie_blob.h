@@ -852,17 +852,6 @@ std::shared_ptr<T> make_shared_blob(Args&&... args) {
 }
 
 /**
- * @brief This structure describes ROI data.
- */
-struct ROI {
-    size_t id;  //!< ID of a ROI
-    size_t posX;  //!< W upper left coordinate of ROI
-    size_t posY;  //!< H upper left coordinate of ROI
-    size_t sizeX;  //!< W size of ROI
-    size_t sizeY;  //!< H size of ROI
-};
-
-/**
  * @brief Creates a blob describing given ROI object based on the given blob with pre-allocated memory.
  *
  * @param inputBlob original blob with pre-allocated memory.

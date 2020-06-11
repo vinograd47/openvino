@@ -318,4 +318,71 @@ private:
     BlockingDesc blockingDesc;
 };
 
+/**
+ * @brief This structure describes single dimension slice for ROI data.
+ */
+struct DimSlice {
+    size_t startInd;  //!< The start index of the ROI in the specific dimension
+    size_t size;  //!< The size of the ROI in the specific dimension
+};
+
+/**
+ * @brief This structure describes a slice from ND Tensor.
+ */
+using TensorSlice = std::vector<DimSlice>;
+
+/**
+ * @brief Creates a TensorDesc object for ROI.
+ *
+ * @param origDesc original TensorDesc object.
+ * @param roi A ROI object inside of the original object.
+ *
+ * @return A newly created TensorDesc object representing ROI.
+ */
+INFERENCE_ENGINE_API_CPP(TensorDesc) make_roi_desc(
+        const TensorDesc& origDesc,
+        const TensorSlice& roi);
+
+/**
+ * @brief This structure describes ROI data for image-like tensors.
+ */
+struct ROI {
+    size_t id = 0;      //!< ID of a ROI (offset over batch dimension)
+    size_t posX = 0;    //!< W upper left coordinate of ROI
+    size_t posY = 0;    //!< H upper left coordinate of ROI
+    size_t sizeX = 0;   //!< W size of ROI
+    size_t sizeY = 0;   //!< H size of ROI
+
+    ROI() = default;
+    ROI(size_t id, size_t posX, size_t posY, size_t sizeX, size_t sizeY) :
+        id(id), posX(posX), posY(posY), sizeX(sizeX), sizeY(sizeY) {
+    }
+};
+
+/**
+ * @brief Creates a generic ND ROI slices from image ROI structure.
+ *
+ * @param origDesc original TensorDesc object.
+ * @param roi An image ROI object inside of the original object.
+ *
+ * @return A generic ND ROI slices.
+ */
+INFERENCE_ENGINE_API_CPP(TensorSlice) make_roi_slice(
+        const TensorDesc& origDesc,
+        const ROI& roi);
+
+/**
+ * @brief Creates a TensorDesc object for ROI.
+ *
+ * @param origDesc original TensorDesc object.
+ * @param roi An image ROI object inside of the original object.
+ *
+ * @return A newly created TensorDesc object representing ROI.
+ */
+inline TensorDesc make_roi_desc(
+        const TensorDesc& origDesc,
+        const ROI& roi) {
+    return make_roi_desc(origDesc, make_roi_slice(origDesc, roi));
+}
+
 }  // namespace InferenceEngine
